@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <stdarg.h>
 #include "iniparser.h"
+#include "iniparser_buffer.h"
 
 /*---------------------------- Defines -------------------------------------*/
 #define ASCIILINESZ         (1024)
@@ -214,6 +215,7 @@ const char * iniparser_getsecname(const dictionary * d, int n)
     return d->key[i] ;
 }
 
+#if CONFIG_INIPARSER_USE_FS
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Dump a dictionary to an opened file pointer.
@@ -243,7 +245,56 @@ void iniparser_dump(const dictionary * d, FILE * f)
     }
     return ;
 }
+#endif
 
+char *iniparser_dump_2_buffer(const dictionary *d)
+{
+    int i;
+
+    iniparser_buffer_t in ={0};
+    char buffer[ASCIILINESZ + 1];
+    char *data = NULL;
+    int ret = 0;
+
+    if (d == NULL)
+        return NULL;
+
+    iniparser_buffer_init(&in, 1);
+
+    for (i = 0; i < d->size; i++)
+    {
+        if (d->key[i] == NULL)
+            continue;
+        if (d->val[i] != NULL)
+        {
+            memset(buffer, 0, sizeof(buffer));
+            ret = snprintf(buffer, sizeof(buffer), "[%s]=[%s]\n", d->key[i], d->val[i]);
+            iniparser_buffer_write((unsigned char *)buffer, ret, &in);
+        }
+        else
+        {
+            memset(buffer, 0, sizeof(buffer));
+            ret = snprintf(buffer, sizeof(buffer), "[%s]=UNDEF\n", d->key[i]);
+            iniparser_buffer_write((unsigned char *)buffer, ret, &in);
+        }
+    }
+
+    data = malloc(in.w_offset + 1);
+    if (data == NULL)
+    {
+        iniparser_buffer_deinit(&in);
+        return data;
+    }
+
+    iniparser_buffer_read(data, in.w_offset, &in);
+    data[in.w_offset] = '\0';
+
+    iniparser_buffer_deinit(&in);
+
+    return data;
+}
+
+#if CONFIG_INIPARSER_USE_FS
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Save a dictionary to a loadable ini file
@@ -318,6 +369,7 @@ void iniparser_dumpsection_ini(const dictionary * d, const char * s, FILE * f)
     fprintf(f, "\n");
     return ;
 }
+#endif
 
 /*-------------------------------------------------------------------------*/
 /**
@@ -833,4 +885,222 @@ dictionary * iniparser_load(const char * ininame)
 void iniparser_freedict(dictionary * d)
 {
     dictionary_del(d);
+}
+
+
+
+dictionary * iniparser_load_from_buffer(const unsigned char * buffer, int bufferlen)
+{
+    iniparser_buffer_t in ;
+
+    char line    [ASCIILINESZ+1] ;
+    char section [ASCIILINESZ+1] ;
+    char key     [ASCIILINESZ+1] ;
+    char tmp     [(ASCIILINESZ * 2) + 2] ;
+    char val     [ASCIILINESZ+1] ;
+
+    int  last=0 ;
+    int  len ;
+    int  lineno=0 ;
+    int  errs=0;
+    int  mem_err=0;
+
+    dictionary * dict = NULL;
+
+    if ((iniparser_buffer_init(&in, bufferlen))!= 0) {
+        iniparser_error_callback("iniparser: iniparser_buffer_init err\n");
+        return NULL ;
+    }
+    if(iniparser_buffer_write(buffer, bufferlen, &in) == -1)
+    {
+        iniparser_buffer_deinit(&in);
+        return NULL ;
+    }
+
+    dict = dictionary_new(0) ;
+    if (!dict) {
+        iniparser_buffer_deinit(&in);
+        return NULL ;
+    }
+
+    memset(line,    0, ASCIILINESZ);
+    memset(section, 0, ASCIILINESZ);
+    memset(key,     0, ASCIILINESZ);
+    memset(val,     0, ASCIILINESZ);
+    last=0 ;
+
+    while (iniparser_buffer_gets(line+last, ASCIILINESZ-last, &in)!=NULL) {
+        lineno++ ;
+        len = (int)strlen(line)-1;
+        if (len<=0)
+            continue;
+        /* Safety check against buffer overflows */
+        if (line[len]!='\n' && !iniparser_buffer_eof(&in)) {
+            iniparser_error_callback(
+              "iniparser: input line too long in (%d)\n",
+              lineno);
+            dictionary_del(dict);
+            iniparser_buffer_deinit(&in);
+            return NULL ;
+        }
+        /* Get rid of \n and spaces at end of line */
+        while ((len>=0) &&
+                ((line[len]=='\n') || (isspace(line[len])))) {
+            line[len]=0 ;
+            len-- ;
+        }
+        if (len < 0) { /* Line was entirely \n and/or spaces */
+            len = 0;
+        }
+        /* Detect multi-line */
+        if (line[len]=='\\') {
+            /* Multi-line value */
+            last=len ;
+            continue ;
+        } else {
+            last=0 ;
+        }
+        switch (iniparser_line(line, section, key, val)) {
+            case LINE_EMPTY:
+            case LINE_COMMENT:
+            break ;
+
+            case LINE_SECTION:
+            mem_err = dictionary_set(dict, section, NULL);
+            break ;
+
+            case LINE_VALUE:
+            sprintf(tmp, "%s:%s", section, key);
+            mem_err = dictionary_set(dict, tmp, val);
+            break ;
+
+            case LINE_ERROR:
+            iniparser_error_callback(
+              "iniparser: syntax error in (%d):\n-> %s\n",
+              lineno,
+              line);
+            errs++ ;
+            break;
+
+            default:
+            break ;
+        }
+        memset(line, 0, ASCIILINESZ);
+        last=0;
+        if (mem_err<0) {
+            iniparser_error_callback("iniparser: memory allocation failure\n");
+            break ;
+        }
+    }
+    if (errs) {
+        dictionary_del(dict);
+        dict = NULL ;
+    }
+    iniparser_buffer_deinit(&in);
+    return dict ;
+}
+
+static int iniparser_dumpsection_ini_2_buffer(const dictionary * d, const char *s, iniparser_buffer_t *in)
+{
+    int j;
+    char keym[ASCIILINESZ + 1];
+    int seclen;
+    char buffer[ASCIILINESZ + 1];
+    int ret;
+
+    if (d == NULL || in == NULL)
+        return -1;
+    if (!iniparser_find_entry(d, s))
+        return -1;
+
+    seclen = (int)strlen(s);
+    memset(buffer, 0, sizeof(buffer));
+    ret = snprintf(buffer, sizeof(buffer), "\n[%s]\n", s);
+    iniparser_buffer_write((unsigned char *)buffer, ret, in);
+    sprintf(keym, "%s:", s);
+    for (j = 0; j < d->size; j++)
+    {
+        if (d->key[j] == NULL)
+            continue;
+        if (!strncmp(d->key[j], keym, seclen + 1))
+        {
+            memset(buffer, 0, sizeof(buffer));
+            ret = snprintf(buffer, sizeof(buffer), "%-30s = %s\n",
+                           d->key[j] + seclen + 1,
+                           d->val[j] ? d->val[j] : "");
+            iniparser_buffer_write((unsigned char *)buffer, ret, in);
+        }
+    }
+    memset(buffer, 0, sizeof(buffer));
+    ret = snprintf(buffer, sizeof(buffer), "\n");
+    iniparser_buffer_write((unsigned char *)buffer, ret, in);
+
+    return 0;
+}
+
+char *iniparser_dump_ini_2_buffer(const dictionary * d)
+{
+    int i;
+    int nsec;
+    const char *secname;
+    iniparser_buffer_t in ={0};
+    char buffer[ASCIILINESZ + 1];
+    char *data = NULL;
+    int ret = 0;
+    
+
+    if (d == NULL)
+        return NULL;
+
+    nsec = iniparser_getnsec(d);
+
+    iniparser_buffer_init(&in, 1);
+    if (nsec < 1)
+    {
+        /* No section in file: dump all keys as they are */
+        for (i = 0; i < d->size; i++)
+        {
+            if (d->key[i] == NULL)
+                continue;
+            memset(buffer, 0, sizeof(buffer));
+            ret = snprintf(buffer, sizeof (buffer), "%s = %s\n", d->key[i], d->val[i]);
+            iniparser_buffer_write((unsigned char *)buffer, ret, &in);
+        }
+        data = malloc(in.w_offset + 1);
+        if (data == NULL)
+        {
+            iniparser_buffer_deinit(&in);
+            return data;
+        }
+
+        iniparser_buffer_read(data, in.w_offset, &in);
+        data[in.w_offset] = '\0';
+
+        iniparser_buffer_deinit(&in);
+        return data;
+    }
+
+    for (i = 0; i < nsec; i++)
+    {
+        secname = iniparser_getsecname(d, i);
+        iniparser_dumpsection_ini_2_buffer(d, secname, &in);
+    }
+
+
+    memset(buffer, 0, sizeof(buffer));
+    ret = snprintf(buffer, sizeof(buffer), "\n");
+    iniparser_buffer_write((unsigned char *)buffer, ret, &in);
+
+    data = malloc(in.w_offset + 1);
+    if (data == NULL)
+    {
+        iniparser_buffer_deinit(&in);
+        return data;
+    }
+
+    iniparser_buffer_read(data, in.w_offset, &in);
+    data[in.w_offset] = '\0';
+
+    iniparser_buffer_deinit(&in);
+    return data;
 }

@@ -17,6 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "inipaser_config.h"
 
 /*
  * The following #include is necessary on many Unixes but not Linux.
@@ -82,7 +83,7 @@ int iniparser_getnsec(const dictionary * d);
 
 const char * iniparser_getsecname(const dictionary * d, int n);
 
-
+#if CONFIG_INIPARSER_USE_FS
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Save a dictionary to a loadable ini file
@@ -96,7 +97,11 @@ const char * iniparser_getsecname(const dictionary * d, int n);
 /*--------------------------------------------------------------------------*/
 
 void iniparser_dump_ini(const dictionary * d, FILE * f);
+#endif
 
+char *iniparser_dump_ini_2_buffer(const dictionary * d);
+
+#if CONFIG_INIPARSER_USE_FS
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Save a dictionary section to a loadable ini file
@@ -126,7 +131,9 @@ void iniparser_dumpsection_ini(const dictionary * d, const char * s, FILE * f);
  */
 /*--------------------------------------------------------------------------*/
 void iniparser_dump(const dictionary * d, FILE * f);
+#endif
 
+char *iniparser_dump_2_buffer(const dictionary * d);
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Get the number of keys in a section of a dictionary.
@@ -350,6 +357,8 @@ dictionary * iniparser_load(const char * ininame);
  */
 /*--------------------------------------------------------------------------*/
 void iniparser_freedict(dictionary * d);
+
+dictionary * iniparser_load_from_buffer(const unsigned char * buffer, int len);
 
 #ifdef __cplusplus
 }

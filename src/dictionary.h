@@ -22,6 +22,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "inipaser_config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -151,7 +152,7 @@ int dictionary_set(dictionary * vd, const char * key, const char * val);
 /*--------------------------------------------------------------------------*/
 void dictionary_unset(dictionary * d, const char * key);
 
-
+#if CONFIG_INIPARSER_USE_FS
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Dump a dictionary to an opened file pointer.
@@ -165,6 +166,9 @@ void dictionary_unset(dictionary * d, const char * key);
  */
 /*--------------------------------------------------------------------------*/
 void dictionary_dump(const dictionary * d, FILE * out);
+#endif
+
+char *dictionary_dump_buffer(const dictionary * d);
 
 #ifdef __cplusplus
 }
