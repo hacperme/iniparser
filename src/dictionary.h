@@ -166,6 +166,8 @@ void dictionary_unset(dictionary * d, const char * key);
 /*--------------------------------------------------------------------------*/
 void dictionary_dump(const dictionary * d, FILE * out);
 
+char *dictionary_dump_buffer(const dictionary * d);
+
 #ifdef __cplusplus
 }
 #endif

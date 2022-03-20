@@ -19,6 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include "iniparser_buffer.h"
 
 /** Maximum value size for integers and doubles. */
 #define MAXVALSZ    1024
@@ -377,4 +378,49 @@ void dictionary_dump(const dictionary * d, FILE * out)
         }
     }
     return ;
+}
+
+char *dictionary_dump_buffer(const dictionary * d)
+{
+    ssize_t i;
+    iniparser_buffer_t in ={0};
+    char buffer[MAXVALSZ];
+    char *data = NULL;
+    int ret = 0;
+
+    if (d == NULL)
+        return NULL;
+        
+    if (d->n < 1)
+    {
+
+        return NULL;
+    }
+    iniparser_buffer_init(&in, 1);
+
+    for (i = 0; i < d->size; i++)
+    {
+        if (d->key[i])
+        {
+            memset(buffer, 0, sizeof (buffer));
+            ret = snprintf(buffer, sizeof (buffer), "%20s\t[%s]\n",
+                    d->key[i],
+                    d->val[i] ? d->val[i] : "UNDEF");
+            iniparser_buffer_write((unsigned char *)buffer, ret, &in);
+        }
+    }
+
+    data = malloc(in.w_offset+1);
+    if(data == NULL)
+    {
+        iniparser_buffer_deinit( &in);
+        return data;
+    }
+
+    iniparser_buffer_read(data, in.w_offset, &in);
+    data[in.w_offset] = '\0';
+
+
+    iniparser_buffer_deinit( &in);
+    return data;
 }
