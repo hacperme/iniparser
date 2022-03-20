@@ -349,6 +349,7 @@ void dictionary_unset(dictionary * d, const char * key)
     return ;
 }
 
+#if CONFIG_INIPARSER_USE_FS
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Dump a dictionary to an opened file pointer.
@@ -379,6 +380,7 @@ void dictionary_dump(const dictionary * d, FILE * out)
     }
     return ;
 }
+#endif
 
 char *dictionary_dump_buffer(const dictionary * d)
 {

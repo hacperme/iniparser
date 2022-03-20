@@ -4,23 +4,26 @@
 #include <unistd.h>
 
 #include "iniparser.h"
-
+#if CONFIG_INIPARSER_USE_FS
 void create_example_ini_file(void);
 int  parse_ini_file(char * ini_name);
+#endif
 void create_example_ini_buffer(char *buffer, int len);
 int parse_ini_buffer(char *buffer, int len);
 
 int main(int argc, char * argv[])
 {
     int     status ;
-
+#if CONFIG_INIPARSER_USE_FS
     if (argc<2) {
         create_example_ini_file();
         status = parse_ini_file("example.ini");
     } else {
         status = parse_ini_file(argv[1]);
     }
-
+#endif
+    (void)argc;
+    (void)argv;
     char buffer[1024] = {0};
     create_example_ini_buffer(buffer, sizeof (buffer));
     status = parse_ini_buffer(buffer, sizeof (buffer));
@@ -101,7 +104,9 @@ int parse_ini_buffer(char *buffer, int len)
         fprintf(stderr, "cannot parse file: %s\n", buffer);
         return -1 ;
     }
+    #if CONFIG_INIPARSER_USE_FS
     iniparser_dump(ini, stderr);
+    #endif
 
     /* Get pizza attributes */
     printf("Pizza:\n");
@@ -154,7 +159,9 @@ int parse_ini_file(char * ini_name)
         fprintf(stderr, "cannot parse file: %s\n", ini_name);
         return -1 ;
     }
+#if CONFIG_INIPARSER_USE_FS
     iniparser_dump(ini, stderr);
+#endif
 
     /* Get pizza attributes */
     printf("Pizza:\n");

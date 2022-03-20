@@ -15,9 +15,10 @@ int main(int argc, char * argv[])
     } else {
         ini_name = argv[1] ;
     }
-
+#if CONFIG_INIPARSER_USE_FS
     ini = iniparser_load(ini_name);
     iniparser_dump(ini, stdout);
+#endif
     iniparser_freedict(ini);
 
     return 0 ;

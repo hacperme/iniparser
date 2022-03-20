@@ -12,6 +12,7 @@ SOURCES += \
 HEADERS += \
     src/dictionary.h \
     src/iniparser.h \
-    src/iniparser_buffer.h
+    src/iniparser_buffer.h \
+    src/inipaser_config.h
 
 INCLUDEPATH += src

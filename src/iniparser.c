@@ -215,6 +215,7 @@ const char * iniparser_getsecname(const dictionary * d, int n)
     return d->key[i] ;
 }
 
+#if CONFIG_INIPARSER_USE_FS
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Dump a dictionary to an opened file pointer.
@@ -244,6 +245,7 @@ void iniparser_dump(const dictionary * d, FILE * f)
     }
     return ;
 }
+#endif
 
 char *iniparser_dump_2_buffer(const dictionary *d)
 {
@@ -292,6 +294,7 @@ char *iniparser_dump_2_buffer(const dictionary *d)
     return data;
 }
 
+#if CONFIG_INIPARSER_USE_FS
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Save a dictionary to a loadable ini file
@@ -366,6 +369,7 @@ void iniparser_dumpsection_ini(const dictionary * d, const char * s, FILE * f)
     fprintf(f, "\n");
     return ;
 }
+#endif
 
 /*-------------------------------------------------------------------------*/
 /**
