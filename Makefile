@@ -51,7 +51,8 @@ endif
 
 
 SRCS = src/iniparser.c \
-	   src/dictionary.c
+	   src/dictionary.c \
+	   src/iniparser_buffer.c
 
 OBJS = $(SRCS:.c=.o)
 

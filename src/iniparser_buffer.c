@@ -128,7 +128,7 @@ char *iniparser_buffer_gets(char *buffer, int n, iniparser_buffer_t *in)
 
     while (n != 0)
     {
-        // check eof
+        /* check eof */
         if(in->w_offset == in->r_offset)
         {
             if(s == buffer)
