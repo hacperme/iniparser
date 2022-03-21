@@ -31,6 +31,7 @@ int main(int argc, char * argv[])
     return status ;
 }
 
+#if CONFIG_INIPARSER_USE_FS
 void create_example_ini_file(void)
 {
     FILE    *   ini ;
@@ -62,6 +63,8 @@ void create_example_ini_file(void)
     "\n");
     fclose(ini);
 }
+
+#endif
 
 void create_example_ini_buffer(char *buffer, int len)
 {
@@ -143,7 +146,7 @@ int parse_ini_buffer(char *buffer, int len)
     return 0 ;
 }
 
-
+#if CONFIG_INIPARSER_USE_FS
 int parse_ini_file(char * ini_name)
 {
     dictionary  *   ini ;
@@ -192,5 +195,5 @@ int parse_ini_file(char * ini_name)
     iniparser_freedict(ini);
     return 0 ;
 }
-
+#endif
 

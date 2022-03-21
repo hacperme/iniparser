@@ -749,6 +749,7 @@ static line_status iniparser_line(
     return sta ;
 }
 
+#if CONFIG_INIPARSER_USE_FS
 /*-------------------------------------------------------------------------*/
 /**
   @brief    Parse an ini file and return an allocated dictionary object
@@ -870,6 +871,7 @@ dictionary * iniparser_load(const char * ininame)
     fclose(in);
     return dict ;
 }
+#endif
 
 /*-------------------------------------------------------------------------*/
 /**
